@@ -1,0 +1,28 @@
+[build-system]
+requires = ["wheel", "setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ekiden"
+version = "0.1.0"
+description = "Python implementation of the Nostr protocol with some goodies"
+requires-python = ">=3.10"
+keywords = ["nostr", "relays"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = ['pydantic', 'secp256k1', 'websockets']
+
+[options]
+packages = ["ekiden"]
+
+package-dir = {"" = "src"}
+
+[tool.distutils.bdist_wheel]
+universal = true
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 100
