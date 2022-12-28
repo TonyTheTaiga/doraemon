@@ -1,0 +1,2 @@
+pydantic
+secp256k1
