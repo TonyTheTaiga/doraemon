@@ -128,6 +128,7 @@ async def event_handler(websocket: WebSocketServerProtocol, db: DB, event: Event
 
     if event.kind == Kind.set_metadata:
         await registration_handler(websocket, db, event)
+        await publication_handler(websocket, db, event)
     elif event.kind in [Kind.text_note, Kind.recommend_server]:
         # TODO: if Kind.recommend_server validate that the content of the event is a valid websocket uri (ws://..., wss://...)
         await publication_handler(websocket, db, event)
