@@ -91,12 +91,9 @@ async def registration_handler(websocket: WebSocketServerProtocol, db: DB, event
             }
         )
 
-    await websocket.send(dump_json(["NOTICE", "OK"]))
-
 
 async def publication_handler(websocket, db: DB, event: Event):
     # Publishe the event to all valid subscriptions
-    await websocket.send(dump_json(["NOTICE", "OK"]))
     for websocket, subscription_id, filters in subscriptions:
         if websocket.open:
             if validate_filters(event, filters):
@@ -137,6 +134,8 @@ async def event_handler(websocket: WebSocketServerProtocol, db: DB, event: Event
 
     async with db_lock:
         await save_db(db)
+
+    await websocket.send(dump_json(["NOTICE", "OK"]))
 
 
 async def subscription_handler(websocket: WebSocketServerProtocol, db: DB, subscription_id: str, filters: Filters):
