@@ -19,11 +19,6 @@ class Identity(BaseModel):
     pubkey: str
 
 
-class Publication(BaseModel):
-    body: str
-    identity: Identity
-
-
 class DBEvent(BaseModel):
     id: str
     kind: int
@@ -36,7 +31,6 @@ class DBEvent(BaseModel):
 
 class DB(BaseModel):
     identities: Dict[str, Identity]
-    publications: Dict[str, List[Publication]]
     events: Dict[str, Dict[Kind, List[DBEvent]]]
 
     class Config:
@@ -101,9 +95,6 @@ async def registration_handler(websocket: WebSocketServerProtocol, db: DB, event
 
 
 async def publication_handler(websocket, db: DB, event: Event):
-    publication = Publication(body=event.content, identity=db.identities[event.pubkey])
-    publications = db.publications.setdefault(event.pubkey, [])
-    publications.append(publication)
     await websocket.send(dump_json(["NOTICE", "OK"]))
     for websocket, subscription_id, filters in subscriptions:
         if websocket.open:
@@ -143,7 +134,8 @@ async def event_handler(websocket: WebSocketServerProtocol, db: DB, event: Event
         # TODO: if Kind.recommend_server validate that the content of the event is a valid websocket uri (ws://..., wss://...)
         await publication_handler(websocket, db, event)
 
-    await save_db(db)
+    async with db_lock:
+        await save_db(db)
 
 
 async def subscription_handler(websocket: WebSocketServerProtocol, db: DB, subscription_id: str, filters: Filters):
