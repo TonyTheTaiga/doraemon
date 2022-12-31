@@ -95,6 +95,7 @@ async def registration_handler(websocket: WebSocketServerProtocol, db: DB, event
 
 
 async def publication_handler(websocket, db: DB, event: Event):
+    # Publishe the event to all valid subscriptions
     await websocket.send(dump_json(["NOTICE", "OK"]))
     for websocket, subscription_id, filters in subscriptions:
         if websocket.open:
