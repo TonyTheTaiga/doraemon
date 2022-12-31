@@ -53,6 +53,26 @@ async def save_db(db: DB):
         await fp.write(db.json(indent=4))
 
 
+def validate_ids(candidates, subject):
+    if len(candidates) == 0:
+        return True
+
+    return True if subject in candidates else False
+
+
+def validate_authors(candidates, subject):
+    if len(candidates) == 0:
+        return True
+
+    return True if subject in candidates else False
+
+
+def validate_filters(event: Event, filters: Filters):
+    if validate_ids(filters.ids, event.id) and validate_authors(filters.authors, event.pubkey):
+        return True
+    return False
+
+
 async def registration_handler(websocket: WebSocketServerProtocol, db: DB, event: Event):
     content = json.loads(event.content)
     if event.pubkey in db.identities:
@@ -87,7 +107,7 @@ async def publication_handler(websocket, db: DB, event: Event):
     await websocket.send(dump_json(["NOTICE", "OK"]))
     for websocket, subscription_id, filters in subscriptions:
         if websocket.open:
-            if validate_ids(filters.ids, event.id) and validate_authors(filters.authors, event.pubkey):
+            if validate_filters(event, filters):
                 await websocket.send(dump_json(["EVENT", subscription_id, event.dict()]))
         else:
             # remove from list of subscriptions
@@ -126,20 +146,6 @@ async def event_handler(websocket: WebSocketServerProtocol, db: DB, event: Event
     await save_db(db)
 
 
-def validate_ids(candidates, subject):
-    if len(candidates) == 0:
-        return True
-
-    return True if subject in candidates else False
-
-
-def validate_authors(candidates, subject):
-    if len(candidates) == 0:
-        return True
-
-    return True if subject in candidates else False
-
-
 async def subscription_handler(websocket: WebSocketServerProtocol, db: DB, subscription_id: str, filters: Filters):
     subscriptions.append((websocket, subscription_id, filters))
 
@@ -147,7 +153,7 @@ async def subscription_handler(websocket: WebSocketServerProtocol, db: DB, subsc
     for user_pubkey, user_events in db.events.items():
         for kind, kind_events in user_events.items():
             for event in kind_events:
-                if validate_ids(filters.ids, event.id) and validate_authors(filters.authors, event.pubkey):
+                if validate_filters(event, filters):
                     hits.append(event)
 
     for event in hits:
