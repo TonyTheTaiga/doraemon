@@ -15,8 +15,8 @@ async def publish(uri):
     async with connect(uri) as websocket:
         event = Event(
             pubkey=public_key,
-            kind=Kind.recommend_server,
-            content="wss://somerelay.com",
+            kind=Kind.text_note,
+            content="I'm a bot written by taiga",
         )
         command = dump_json(
             ["EVENT", event.signed(private_key=private_key)],
@@ -26,5 +26,5 @@ async def publish(uri):
 
 
 if __name__ == "__main__":
-    asyncio.run(publish("ws://localhost:8765"))
-    # asyncio.run(publish("wss://relay.damus.io"))
+    # asyncio.run(publish("ws://localhost:8765"))
+    asyncio.run(publish("wss://relay.damus.io"))

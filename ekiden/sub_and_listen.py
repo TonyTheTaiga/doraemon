@@ -38,5 +38,5 @@ async def subscribe(uri):
 
 
 if __name__ == "__main__":
-    asyncio.run(subscribe("ws://localhost:8765"))
-    # asyncio.run(subscribe("wss://relay.damus.io"))
+    # asyncio.run(subscribe("ws://localhost:8765"))
+    asyncio.run(subscribe("wss://relay.damus.io"))
