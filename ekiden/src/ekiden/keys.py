@@ -3,15 +3,20 @@ import secrets
 import secp256k1
 
 
+class VerificationError(Exception):
+    """Raised when there is a error verifying the key"""
+
+
 class PublicKey:
     def __init__(self, key_hex: str):
         self._public_key = secp256k1.PublicKey(b"\x02" + bytes.fromhex(key_hex), True)
 
     def hex(self):
         """
-        Returns the hex string format of the key
+        Returns the hex string format of the key.
+        Strips the first 2 characters (02)
         """
-        return self._public_key.serialize().hex()
+        return self._public_key.serialize().hex()[2:]
 
     def verify(self, msg: bytes, signature: str) -> bool:
         return self._public_key.schnorr_verify(msg, bytes.fromhex(signature), None, raw=True)
@@ -33,7 +38,7 @@ class PrivateKey:
         return self._private_key.schnorr_sign(msg, None, raw=True).hex()
 
     def public_key_hex(self) -> str:
-        # Prefix with x02 for schnorr specs
+        # Strip the prefix as clients will prefix this pubkey with 0x02.
         return self._private_key.pubkey.serialize()[1:].hex()
 
     def public_key(self) -> PublicKey:

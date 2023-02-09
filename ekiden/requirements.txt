@@ -1,3 +1,7 @@
 pydantic
 secp256k1
+starlette
 websockets
+uvicorn[standard]
+gunicorn
+tortoise-orm

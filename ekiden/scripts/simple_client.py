@@ -6,7 +6,7 @@ import json
 from websockets import connect
 
 from ekiden.keys import PrivateKey
-from ekiden.messages import Event
+from ekiden.nips import Event
 
 private_key = PrivateKey()
 print(f"private key {private_key.hex()}")

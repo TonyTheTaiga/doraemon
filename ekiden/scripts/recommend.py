@@ -4,19 +4,19 @@ import asyncio
 
 from websockets import connect
 
-from ekiden.messages import Event, Kind, dump_json
+from ekiden.nips import Event, Kind, dump_json
 
 # keys for `bot`
-private_key = "0f1e6614bbbe65f130d967c1fc874d4eb263c7c2209bf40dbef0800b6989454c"
-public_key = "25f46974c1fe23c683a9ad4c6ffe5e62d2d8e887dc8e9789f59d2c1bf4082479"
+private_key = "7a3cbb920196bfd57a57d8588852b8c314dfa8bca28deea3a75adc70273628a6"
+public_key = "2183b8476998f3e2f10b757dc98d5421199e0121bf9c130ccb4628df92f1f3ad"
 
 
 async def publish(uri):
     async with connect(uri) as websocket:
         event = Event(
             pubkey=public_key,
-            kind=Kind.text_note,
-            content="I'm a bot written by taiga",
+            kind=Kind.recommend_server,
+            content="wss://somerelay.com",
         )
         command = dump_json(
             ["EVENT", event.signed(private_key=private_key)],
@@ -27,4 +27,6 @@ async def publish(uri):
 
 if __name__ == "__main__":
     # asyncio.run(publish("ws://localhost:8765"))
-    asyncio.run(publish("wss://relay.damus.io"))
+    # asyncio.run(publish("wss://relay.damus.io"))
+    # asyncio.run(publish("wss://brb.io"))
+    asyncio.run(publish("ws://0.0.0.0:8000"))

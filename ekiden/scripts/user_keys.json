@@ -1,0 +1,14 @@
+{
+    "bot_1": {
+        "private": "411ebe5813454c50eb32e2ca577689fc3d8973d6f97d3c0e034b7d305ca5736f",
+        "public": "0befce7238190bad358b6bb296c75a764c255d9cafeac46f5415abde4fc69da3"
+    },
+    "bot_2": {
+        "private": "0befce7238190bad358b6bb296c75a764c255d9cafeac46f5415abde4fc69da3",
+        "public": "8ab155d3fdac5d691525a450c10cd43aeae2db0a6eecd5ca3f08e355c9255705"
+    },
+    "bot_3": {
+        "private": "b504f26bd35f3296dd03d1d286132aef90604e8011447f821b2464f329802934",
+        "public": "bbf483dad8e04d863b809ce41691744ab070b5444cd7138fe46019cb4cad749e"
+    }
+}

@@ -4,25 +4,24 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ekiden"
-version = "0.1.0"
+version = "0.0.1"
 description = "Python implementation of the Nostr protocol with some goodies"
 requires-python = ">=3.10"
 keywords = ["nostr", "relays"]
-classifiers = [
-    "Programming Language :: Python :: 3",
-]
-dependencies = ['pydantic', 'secp256k1', 'websockets']
+classifiers = ["Programming Language :: Python :: 3"]
+dependencies = ['pydantic', 'secp256k1', 'websockets', 'aiofiles']
 
-[options]
-packages = ["ekiden"]
+[project.optional-dependencies]
+dev = ["black", "isort", "pre-commit"]
 
-package-dir = {"" = "src"}
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.distutils.bdist_wheel]
 universal = true
 
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
 [tool.isort]
 profile = "black"
-
-[tool.black]
-line-length = 100

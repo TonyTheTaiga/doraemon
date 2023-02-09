@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
-from ekiden.keys import PrivateKey, PublicKey
+from ekiden.keys import PrivateKey, PublicKey, VerificationError
 
 
 def dump_json(obj) -> str:
@@ -19,6 +19,7 @@ class Kind(IntEnum):
     set_metadata = 0
     text_note = 1
     recommend_server = 2
+    contact_list = 3
 
 
 class Tag(BaseModel):
@@ -33,7 +34,11 @@ class ETag(Tag):
 
     def json_array(self):
         # <['e', event_id, recommended_relay_url]>
-        return dump_json(["e", self.id, self.recommended_relay_url])
+        return ["e", self.id, self.recommended_relay_url]
+
+
+class UnknownTagError(Exception):
+    """Throw when the stored tag could not be parsed back to its data model"""
 
 
 class PTag(Tag):
@@ -43,10 +48,21 @@ class PTag(Tag):
 
     def json_array(self):
         # <['p', pubkey, recommended_relay_url]>
-        return dump_json(["p", self.pubkey, self.recommended_relay_url])
+        return ["p", self.pubkey, self.recommended_relay_url]
+
+
+def create_tag(tag_info) -> Tag:
+    if tag_info[0] == "e":
+        return ETag(id=tag_info[1], recommended_relay_url=tag_info[2])
+    elif tag_info[0] == "p":
+        return PTag(pubkey=tag_info[1], recommended_relay_url=tag_info[2])
+
+    raise UnknownTagError(f"Could not parse tag {tag_info}")
 
 
 class Event(BaseModel):
+    # NIP-1
+
     pubkey: str  # <32-bytes hex-encoded public key of the event creator>
     kind: int  # <integer>
     created_at: Optional[int] = int(time.time())  # <unix timestamp in seconds>
@@ -57,7 +73,20 @@ class Event(BaseModel):
 
     @property
     def id(self) -> str:
-        # <32-bytes sha256 hex-encoded string of the the serialized event data>
+        """
+        <32-bytes sha256 hex-encoded string of the the serialized event data>
+        To obtain the `event.id`, we sha256 the serialized event. The serialization is done over the UTF-8 JSON-serialized string (with no white space or line breaks) of the following structure:
+
+        `[
+        0,
+        <pubkey, as a (lowercase) hex string>,
+        <created_at, as a number>,
+        <kind, as a number>,
+        <tags, as an array of arrays of non-null strings>,
+        <content, as a string>
+        ]`
+
+        """
         return sha256(
             Event.serialize(
                 pubkey=self.pubkey,
@@ -68,8 +97,16 @@ class Event(BaseModel):
             ).encode("utf-8")
         ).hexdigest()
 
-    def sign(self, private_key: str):
-        self.sig = PrivateKey.load(private_key).sign(bytes.fromhex(self.id))
+    def sign(self, private_key: str) -> str:
+        """Signs the messge (Event.id) and sets the sig field
+
+        Args:
+            private_key (str): The private key to sign the message with
+
+        Returns:
+            str: _description_
+        """
+        self.sig = PrivateKey.load(private_key).sign(msg=bytes.fromhex(self.id))
 
     def signed(self, private_key: str) -> dict:
         if not self.sig:
@@ -86,48 +123,46 @@ class Event(BaseModel):
         }
 
     @classmethod
-    def verify(cls, event) -> Event:
+    def verify(cls, event: dict) -> Event:
         """
         Verify the contents of the event with the signature and fields given.
 
-        Returns a new instance with the provided information if successful else raises a ValueError
+        Returns a new instance with the provided information if successful else raises a VerificationError
         """
         ret = PublicKey(event["pubkey"]).verify(
-            msg=sha256(
-                Event.serialize(
-                    pubkey=event["pubkey"],
-                    created_at=event["created_at"],
-                    kind=event["kind"],
-                    tags=event["tags"],
-                    content=event["content"],
-                ).encode("utf-8")
-            ).digest(),
+            msg=bytes.fromhex(event["id"]),
             signature=event["sig"],
         )
         if not ret:
-            raise ValueError("contents of the message could not be verified with the signature provided")
-
-        return Event(
-            pubkey=event["pubkey"],
-            created_at=event["created_at"],
-            kind=event["kind"],
-            tags=event["tags"],
-            content=event["content"],
-            sig=event["sig"],
-        )
+            raise VerificationError("contents of the message could not be verified with the signature provided")
+        event["tags"] = [create_tag(tag_info) for tag_info in event["tags"]]
+        return Event(**event)
 
     @staticmethod
     def serialize(pubkey, created_at, kind, tags, content) -> str:
         return dump_json([0, pubkey, created_at, kind, tags, content])
 
+    def dict(self):
+        return {
+            "id": self.id,
+            "pubkey": self.pubkey,
+            "created_at": self.created_at,
+            "kind": self.kind,
+            "tags": [tag.json_array() for tag in self.tags],
+            "content": self.content,
+            "sig": self.sig,
+        }
+
 
 class Filters(BaseModel):
+    # NIP-1
     # each field is considered a `filter`. multiple filters are or conditions (e.g only one has to pass for the event to be valid)
     # a filter that can contain more than one items are to be treated as and conditions
 
+    #  A prefix match is when the filter string is an exact string prefix of the event value
+    # prefix = aaa, aaa432 is valid, xaaa12332 is not valid
     ids: Optional[List[str]] = []  # <a list of event ids or prefixes>
     authors: Optional[List[str]] = []  # <a list of pubkeys or prefixes, the pubkey of an event must be one of these>
-    #  A prefix match is when the filter string is an exact string prefix of the event value
 
     kinds: Optional[List[int]] = []  # <a list of a kind numbers>
     event_ids: Optional[List[str]] = Field(
@@ -139,33 +174,24 @@ class Filters(BaseModel):
     limit: Optional[int]  # <maximum number of events to be returned in the initial query>
 
 
-class Command(BaseModel):
-    def command_array(self):
-        raise NotImplemented("command_array not implemented")
-
-
 class Subscribe(BaseModel):
+    # NIP-1
     # used to request events and subscribe to new updates.
     subscription_id: str  # a random string that should be used to represent a subscription
     filters: Filters  # A filter determines what events will be sent in that subscription
 
     def json_array(self) -> str:
         # ['REQ', <subscription id>, <[Filter, ...]>]
-        return dump_json(
-            [
-                "REQ",
-                self.subscription_id,
-                self.filter.json(separators=(",", ":"), ensure_ascii=False),
-            ]
-        )
+        return ["REQ", self.subscription_id, self.filters.dict(exclude_defaults=True)]
 
 
 class Close(BaseModel):
+    # NIP-1
     # used to stop previous subscriptions.
     subscription_id: str
 
     def json_array(self) -> str:
-        return dump_json(["CLOSE", self.subscription_id])
+        return ["CLOSE", self.subscription_id]
 
 
 class Notice(BaseModel):
